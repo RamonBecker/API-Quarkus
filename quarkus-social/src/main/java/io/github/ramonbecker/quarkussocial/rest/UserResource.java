@@ -1,7 +1,10 @@
 package io.github.ramonbecker.quarkussocial.rest;
 
+import io.github.ramonbecker.quarkussocial.domain.model.User;
 import io.github.ramonbecker.quarkussocial.rest.dto.CreateUserRequest;
+import io.quarkus.hibernate.orm.panache.PanacheQuery;
 
+import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
@@ -12,12 +15,23 @@ import javax.ws.rs.core.Response;
 public class UserResource {
 
     @POST
+    @Transactional
     public Response createUser(CreateUserRequest userRequest){
-        return Response.ok(userRequest).build();
+        User user = new User();
+        user.setAge(userRequest.getAge());
+        user.setName(userRequest.getName());
+
+        user.persist();
+
+
+        return Response.ok(user).build();
     }
 
     @GET
     public Response listAllUsers(){
-        return Response.ok().build();
+
+       PanacheQuery<User> query = User.findAll();
+
+        return Response.ok(query.list()).build();
     }
 }
