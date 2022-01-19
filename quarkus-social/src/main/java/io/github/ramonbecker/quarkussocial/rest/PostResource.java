@@ -6,12 +6,16 @@ import io.github.ramonbecker.quarkussocial.domain.model.User;
 import io.github.ramonbecker.quarkussocial.domain.repositories.PostRepository;
 import io.github.ramonbecker.quarkussocial.domain.repositories.UserRespository;
 import io.github.ramonbecker.quarkussocial.rest.dto.CreatePostRequest;
+import io.github.ramonbecker.quarkussocial.rest.dto.PostResponse;
+import io.quarkus.hibernate.orm.panache.PanacheQuery;
+import io.quarkus.panache.common.Sort;
 
 import javax.inject.Inject;
 import javax.transaction.Transactional;
 import javax.ws.rs.*;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import java.util.stream.Collectors;
 
 @Path("/users/{userId}/posts")
 @Consumes(MediaType.APPLICATION_JSON)
@@ -40,6 +44,7 @@ public class PostResource {
         Post post = new Post();
         post.setText(request.getText());
         post.setUser(user);
+      //  post.setDateTime(LocalDateTime.now());
 
 
         postRepository.persist(post);
@@ -55,6 +60,14 @@ public class PostResource {
             return Response.status(Response.Status.NOT_FOUND).build();
         }
 
-        return Response.ok().build();
+        PanacheQuery<Post> query = postRepository.find("user", Sort.by("dateTime", Sort.Direction.Descending) ,user);
+
+        var list = query.list();
+
+       var postResponseList =  list.stream()
+            //   .map(post -> PostResponse.fromEntity(post))
+               .map(PostResponse::fromEntity)
+               .collect(Collectors.toList());
+        return Response.ok(postResponseList).build();
     }
 }
