@@ -1,6 +1,10 @@
 package io.github.ramonbecker.quarkussocial.rest;
 
+import io.github.ramonbecker.quarkussocial.domain.model.Follower;
+import io.github.ramonbecker.quarkussocial.domain.model.Post;
 import io.github.ramonbecker.quarkussocial.domain.model.User;
+import io.github.ramonbecker.quarkussocial.domain.repositories.FollowerRepository;
+import io.github.ramonbecker.quarkussocial.domain.repositories.PostRepository;
 import io.github.ramonbecker.quarkussocial.domain.repositories.UserRespository;
 import io.github.ramonbecker.quarkussocial.rest.dto.CreatePostRequest;
 import io.quarkus.test.common.http.TestHTTPEndpoint;
@@ -21,18 +25,52 @@ import static io.restassured.RestAssured.given;
 class PostResourceTest {
 
     @Inject
-    UserRespository userRespository;
+    UserRespository userRepository;
+
+    @Inject
+    FollowerRepository followerRepository;
+
+    @Inject
+    PostRepository postRepository;
 
     Long userId;
+    Long userNotFollowerID;
+    Long userFollowerId;
+
 
     @BeforeEach
     @Transactional
     public void setUP(){
         var user = new User();
-        user.setName("Fulano");
         user.setAge(30);
-        userRespository.persist(user);
+        user.setName("Fulano");
+        userRepository.persist(user);
         userId = user.getId();
+
+        //criada a postagem para o usuario
+        Post post = new Post();
+        post.setText("Hello");
+        post.setUser(user);
+        postRepository.persist(post);
+
+        //usuario que não segue ninguém
+        var userNotFollower = new User();
+        userNotFollower.setAge(33);
+        userNotFollower.setName("Cicrano");
+        userRepository.persist(userNotFollower);
+        userNotFollowerID = userNotFollower.getId();
+
+        //usuário seguidor
+        var userFollower = new User();
+        userFollower.setAge(31);
+        userFollower.setName("Terceiro");
+        userRepository.persist(userFollower);
+        userFollowerId = userFollower.getId();
+
+        Follower follower = new Follower();
+        follower.setUser(user);
+        follower.setFollower(userFollower);
+        followerRepository.persist(follower);
     }
 
     @Test
@@ -102,6 +140,13 @@ class PostResourceTest {
     @Test
     @DisplayName("Should return 403 when follower isn't a follower")
     public void listPostNotFollowerTest(){
+        given()
+                .pathParam("userId", userId)
+                .header("followerId", userNotFollowerID)
+                .when().get()
+                .then().statusCode(403)
+                .body(Matchers.is("You can't see these posts"));
+
 
     }
 
@@ -109,5 +154,13 @@ class PostResourceTest {
     @DisplayName("Should return posts")
     public void listPostsTest(){
 
+        given()
+                .pathParam("userId", userId)
+                .header("followerId", userFollowerId)
+                .when()
+                .get()
+                .then()
+                .statusCode(200)
+                .body("size()", Matchers.is(1));
     }
 }
